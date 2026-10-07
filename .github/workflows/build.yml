@@ -28,6 +28,16 @@ jobs:
           cp android_overrides/MainActivity.kt "$DIR/MainActivity.kt"
       - name: Raise minSdk for Firebase
         run: sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/; s/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle.kts android/app/build.gradle 2>/dev/null || true
+      - name: Enable core library desugaring
+        run: |
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i '0,/compileOptions {/s//compileOptions {\n        isCoreLibraryDesugaringEnabled = true/' android/app/build.gradle.kts
+            printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n' >> android/app/build.gradle.kts
+            grep -n -A3 'compileOptions' android/app/build.gradle.kts
+          else
+            sed -i '0,/compileOptions {/s//compileOptions {\n        coreLibraryDesugaringEnabled true/' android/app/build.gradle
+            printf "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n" >> android/app/build.gradle
+          fi
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
