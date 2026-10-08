@@ -38,6 +38,29 @@ jobs:
             sed -i '0,/compileOptions {/s//compileOptions {\n        coreLibraryDesugaringEnabled true/' android/app/build.gradle
             printf "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n" >> android/app/build.gradle
           fi
+      - name: Raise compileSdk for plugins
+        run: |
+          if [ -f android/build.gradle.kts ]; then
+            cat >> android/build.gradle.kts <<'EOF'
+
+          subprojects {
+              val p = this
+              val fix = {
+                  p.extensions.findByName("android")?.withGroovyBuilder { "compileSdkVersion"(36) }
+                  Unit
+              }
+              if (p.state.executed) fix() else p.afterEvaluate { fix() }
+          }
+          EOF
+          else
+            cat >> android/build.gradle <<'EOF'
+
+          subprojects { sp ->
+              def fix = { if (sp.hasProperty('android')) { sp.android { compileSdkVersion 36 } } }
+              if (sp.state.executed) { fix() } else { sp.afterEvaluate { fix() } }
+          }
+          EOF
+          fi
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
